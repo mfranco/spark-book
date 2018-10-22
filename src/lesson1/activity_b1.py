@@ -1,9 +1,9 @@
 sc.setLogLevel("ERROR")
 # downloads a plain text version of the book
-# "Adventures of Huckleberry Finn"
+# "A tale of two cities"
 import urllib.request
 url = 'https://raw.githubusercontent.com/maigfrga/spark-streaming-book/'\
-    'master/data/books/huckleberry.txt'
+    'master/data/books/tale2cities.txt'
 response = urllib.request.urlopen(url)
 data = response.read()
 data = data.decode('utf-8')
@@ -36,6 +36,8 @@ cleaned_book = book.map(
     lambda x: clean_line(x)).filter(lambda x: x != '')
 cleaned_book.count()
 cleaned_book.first()
+
+# 3. normalize and tokenize
 
 import re
 
@@ -74,8 +76,8 @@ reduced_counts.takeOrdered(4, key=lambda x: x[1])
 reduced_counts.takeOrdered(8, key=lambda x: -x[1])
 
 # 6 exclude top n words with top high frequency but meaningless
-huckleberry_book = reduced_counts.filter(lambda x: x[1] < 500)
-huckleberry_book.takeOrdered(8, key=lambda x: -x[1])
+twocities_book = reduced_counts.filter(lambda x: x[1] < 500)
+twocities_book.takeOrdered(8, key=lambda x: -x[1])
 
 
 
@@ -116,10 +118,10 @@ hamlet_book.takeOrdered(8, key=lambda x: -x[1])
 
 
 
-# Perform join operation to find out what words are used
+# 8 Perform join operation to find out what words are used
 # in both books
 
-common_words = huckleberry_book.join(hamlet_book)
+common_words = twocities_book.join(hamlet_book)
 common_words.count()
 
 # ordering by word
@@ -131,25 +133,17 @@ common_words.takeOrdered(8, key=lambda x: x[1][0] + x[1][1])
 common_words.takeOrdered(8, key=lambda x: -1 * (x[1][0] + x[1][1]))
 
 
-# words that are unique to huckleberry_book
-unique_huckleberry_book = huckleberry_book.\
+# words that are unique to twocities_book 
+unique_twocities_book = twocities_book.\
     leftOuterJoin(hamlet_book).filter(lambda x: x[1][1] is None).\
     map(lambda x: x[0])
 
-unique_huckleberry_book.count()
-unique_huckleberry_book.take(6)
-
-# words that are unique to huckleberry_book
-unique_huckleberry_book = huckleberry_book.\
-    leftOuterJoin(hamlet_book).filter(lambda x: x[1][1] is None).\
-    map(lambda x: x[0])
-
-unique_huckleberry_book.count()
-unique_huckleberry_book.take(8)
+unique_twocities_book.count()
+unique_twocities_book.take(6)
 
 # words that are unique to hamlet_book
 unique_hamlet_book = hamlet_book.\
-    leftOuterJoin(huckleberry_book).filter(lambda x: x[1][1] is None).\
+    leftOuterJoin(twocities_book).filter(lambda x: x[1][1] is None).\
     map(lambda x: x[0])
 
 unique_hamlet_book.count()
