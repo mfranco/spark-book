@@ -1,6 +1,5 @@
 from pyspark import SparkContext
 
-# downloads a plain text version of the book Adventures of Huckleberry Finn"
 import urllib.request
 
 
@@ -84,23 +83,23 @@ def report(book1, book2):
 
 
 def process_books():
-    huckleberry_url = 'https://raw.githubusercontent.com/maigfrga/spark-streaming-book/'\
-    'master/data/books/huckleberry.txt'
+    tale2cities_url = 'https://raw.githubusercontent.com/maigfrga/spark-streaming-book/'\
+    'master/data/books/tale2cities.txt'
 
     hamlet_url = 'https://raw.githubusercontent.com/maigfrga/spark-streaming-book/'\
         'master/data/books/hamlet.txt'
 
-    huckleberry = clean_book(create_text_rdd_from_url(huckleberry_url))
-    huckleberry = remove_stop_words(huckleberry)
-    huckleberry = exclude_popular_words(huckleberry, 10)
-    huckleberry.setName('huckleberry')
+    tale2cities = clean_book(create_text_rdd_from_url(tale2cities_url))
+    tale2cities = remove_stop_words(tale2cities)
+    tale2cities = exclude_popular_words(tale2cities, 10)
+    tale2cities.setName('A tale of two cities')
 
     hamlet = clean_book(create_text_rdd_from_url(hamlet_url))
     hamlet = remove_stop_words(hamlet)
     hamlet = exclude_popular_words(hamlet, 10)
     hamlet.setName('hamlet')
 
-    report(huckleberry, hamlet)
+    report(tale2cities, hamlet)
 
 
 def main():
