@@ -30,15 +30,6 @@ def aggregate_by_event_type(record):
         .map(lambda record: (record['event'], 1))\
         .reduceByKey(lambda a, b: a+b)
 
-def update_global_event_counts(key_value_pairs):
-    def updateFunction(newValues, runningCount):
-        if runningCount is None:
-            runningCount = 0
-        return sum(newValues, runningCount)  # add the new values with the previous running count to get the new count
-
-    return key_value_pairs.updateStateByKey(updateFunction)
-
-
 def consume_records(
         interval=1, host='localhost', port=9876):
     """
@@ -52,10 +43,7 @@ def consume_records(
     # counts number of events
     event_counts = aggregate_by_event_type(stream)
     event_counts.pprint()
-    key_value_pairs = stream.map(parse_entry)\
-        .map(lambda record: (record['event'], 1))
-    running_event_counts = update_global_event_counts(key_value_pairs)
-    running_event_counts.pprint()
+
     stream_context.start()
     stream_context.awaitTermination()
 

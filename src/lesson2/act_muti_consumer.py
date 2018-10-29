@@ -49,11 +49,14 @@ def update_global_event_counts(key_value_pairs):
 
 def aggregate_joined_stream(pair):
     key = pair[0]
-    values = [val for val in pair[1] if val is not None]
+    values = [val for val in pair[1][0] if val is not None]
+    if pair[1][1] is not None:
+        values.append(pair[1][1])
+    key = 'global_count_{}'.format(key)
     return(key, sum(values))
 
 
-def join_aggregation(stream1, stream2):
+def join_aggregation(stream1, stream2, stream3):
     key_value_pairs = stream1.map(parse_entry)\
         .map(lambda record: (record['event'], 1))
     running_event_counts = update_global_event_counts(key_value_pairs)
@@ -64,12 +67,18 @@ def join_aggregation(stream1, stream2):
     running_event_counts2 = update_global_event_counts(key_value_pairs2)
     running_event_counts2.pprint()
 
-    n_counts_joined = running_event_counts.leftOuterJoin(running_event_counts2)
+    key_value_pairs3 = stream3.map(parse_entry)\
+        .map(lambda record: (record['event'], 1))
+    running_event_counts3= update_global_event_counts(key_value_pairs3)
+    running_event_counts3.pprint()
+
+    n_counts_joined = running_event_counts.leftOuterJoin(running_event_counts2)\
+        .leftOuterJoin(running_event_counts3)
     n_counts_joined.pprint()
     n_counts_joined.map(aggregate_joined_stream).pprint()
 
 def consume_records(
-        interval=1, host='localhost', port1=9876, port2=12345):
+        interval=1, host='localhost', port1=9876, port2=12345, port3=23456):
     """
     Create a local StreamingContext with two working
     thread and batch interval
@@ -77,7 +86,8 @@ def consume_records(
     sc, stream_context = initialize_context(interval=interval)
     stream1 = stream_context.socketTextStream(host, port1)
     stream2 = stream_context.socketTextStream(host, port2)
-    join_aggregation(stream1, stream2)
+    stream3 = stream_context.socketTextStream(host, port3)
+    join_aggregation(stream1, stream2, stream3)
     stream_context.start()
     stream_context.awaitTermination()
 
@@ -104,7 +114,12 @@ def main():
 
     parser.add_argument(
         '--port2', required=False, default=12345,
-        help='Port', type=int)
+        help='Port 2', type=int)
+
+    parser.add_argument(
+        '--port3', required=False, default=23456,
+        help='Port 3', type=int)
+
 
     parser.add_argument(
         '--host', required=False, default='localhost', help='Host')
@@ -112,7 +127,7 @@ def main():
     args, extra_params = parser.parse_known_args()
     consume_records(
         interval=args.interval, port1=args.port1,
-        port2=args.port2, host=args.host)
+        port2=args.port2, port3=args.port3, host=args.host)
 
 
 if __name__ == '__main__':

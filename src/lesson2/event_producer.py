@@ -19,8 +19,9 @@ def get_line():
 
 def randomize_interval(interval):
     """
-    Returns a random value sligthly different
-    from the orinal interval parameter
+    Returns a random value slightly different
+    from the original interval parameter
+
     """
     random.seed(datetime.utcnow().microsecond)
     delta = interval + random.uniform(-0.1, 0.9)
