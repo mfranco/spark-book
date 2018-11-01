@@ -1,33 +1,22 @@
 from datetime import datetime
-from glob import glob
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kinesis import KinesisUtils, InitialPositionInStream
 
 import argparse
-import boto3
 import json
 import os
 
-
-def parse_entry(record):
+def parse_entry(msg):
     """
     Event TCP sends sends data in the format
     timestamp:event\n
     """
-    msg = record['value']
     values = msg.split(';')
-
-    # remove \n character if exists
-
-    event = values[1].replace('\n', '')
-
     return {
         'dt': datetime.strptime(
             values[0], '%Y-%m-%d %H:%M:%S.%f'),
-        'event': event,
-        'timestamp': datetime.strptime(
-            record['timestamp'], '%Y-%m-%d %H:%M:%S.%f')
+        'event': values[1]
     }
 
 
@@ -54,23 +43,36 @@ def aggregate_by_event_type(record):
         .map(lambda record: (record['event'], 1))\
         .reduceByKey(lambda a, b: a+b)
 
-def send_record(rdd, Bucket):
-    """
-    If rdd size is greater than 0, store the
-    data as text in S3
-    """
-    if rdd.count() > 0:
-        client = boto3.client('s3')
-        data_dir = os.path.join(
-            os.environ['SPARK_DATA'],
-            'streams', 'kinesis_{}'.format(datetime.utcnow().timestamp()))
-        rdd.saveAsTextFile(data_dir)
-        for fname in glob('{}/part-0000*'.format(data_dir)):
-            client.upload_file(fname, Bucket, fname)
+
+def aggregate_joined_stream(pair):
+    key = pair[0]
+    values = [val for val in pair[1] if val is not None]
+    return(key, sum(values))
+
+
+def join_aggregation(kinesis_stream, tcp_stream):
+    key_value_kinesis = kinesis_stream\
+        .map(lambda s: json.loads(s))\
+        .map(lambda s: parse_entry(s['value']))\
+        .map(lambda record: (record['event'], 1))
+    #key_value_kinesis.pprint()
+    kinesis_event_counts = update_global_event_counts(key_value_kinesis)
+    #kinesis_event_counts.pprint()
+
+    key_value_tcp = tcp_stream.map(parse_entry)\
+        .map(lambda record: (record['event'], 1))
+    #key_value_tcp.pprint()
+    tcp_event_counts = update_global_event_counts(key_value_tcp)
+    #tcp_event_counts2.pprint()
+
+    n_counts_joined = kinesis_event_counts.leftOuterJoin(tcp_event_counts)
+    n_counts_joined.pprint()
+    n_counts_joined.map(aggregate_joined_stream).pprint()
+
 
 
 def consume_records(
-        interval=1, StreamName=None, region_name='us-west-2', Bucket=None):
+        interval=1, StreamName=None, region_name='us-west-2', port=9876):
     """
     Create a local StreamingContext with two working
     thread and batch interval
@@ -81,16 +83,14 @@ def consume_records(
 
     sc, stream_context = initialize_context(interval=interval)
     sc.setLogLevel("INFO")
-    stream = KinesisUtils.createStream(
+    kinesis_stream = KinesisUtils.createStream(
         stream_context, 'EventLKinesisConsumer', StreamName, endpoint,
         region_name, InitialPositionInStream.LATEST, interval)
 
-    # counts number of events
-    event_counts = aggregate_by_event_type(stream)
-    global_counts = update_global_event_counts(event_counts)
-    global_counts.pprint()
-    # Sends data to S3
-    global_counts.foreachRDD(lambda rdd: send_record(rdd, Bucket))
+    tcp_stream = stream_context.socketTextStream('localhost', port)
+
+    join_aggregation(kinesis_stream, tcp_stream)
+
     stream_context.start()
     stream_context.awaitTermination()
 
@@ -116,10 +116,6 @@ def parse_known_args():
         print('Error. Please setup AWS_SECRET_ACCESS_KEY')
         exit(1)
 
-    if 'SPARK_DATA' not in os.environ:
-        print('Error. Please define SPARK_DATA variable')
-        exit(1)
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -133,8 +129,8 @@ def parse_known_args():
     parser.add_argument('--StreamName', required=True, help='Stream name')
 
     parser.add_argument(
-        '--Bucket', required=True, help='S3 Bucket Name'
-    )
+        '--port', required=False, default=9876,
+        help='Port', type=int)
 
     args, extra_params = parser.parse_known_args()
 
@@ -145,7 +141,7 @@ def main():
     args, extra_params = parse_known_args()
     consume_records(
         interval=args.interval, StreamName=args.StreamName,
-        Bucket=args.Bucket, region_name=args.region_name)
+        region_name=args.region_name, port=args.port)
 
 
 if __name__ == '__main__':

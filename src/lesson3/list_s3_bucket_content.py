@@ -42,8 +42,8 @@ def main():
     Creates an Amazon Kinesis stream using boto3 library
     """
     args, _ = parse_known_args()
-    print(
-        list_bucket(args.Bucket))
+    for c in list_bucket(args.Bucket):
+        print(c)
 
 
 if __name__ == '__main__':

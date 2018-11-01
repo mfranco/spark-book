@@ -1,6 +1,5 @@
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
-
 import argparse
 import re
 import os

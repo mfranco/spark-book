@@ -16,12 +16,10 @@ PATHS = (
 )
 
 AGENTS = (
-    'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.1',
-    'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0',
-    'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko)'
+    'Mozilla/5.0 (Windows NT 5.1)'
     'Chrome/41.0.2224.3 Safari/537.36',
     'EsperanzaBot(+http://www.esperanza.to/bot/)',
-    'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)'
+    'Mozilla/5.0 (compatible)'
 )
 
 def get_data():
