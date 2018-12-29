@@ -45,6 +45,7 @@ def initialize(port=9876, interval=0.5):
         print('connection from', client_address)
         while True:
             line = get_line()
+            print(line)
             connection.sendall(line)
             time.sleep(randomize_interval(interval))
     except Exception as e:
